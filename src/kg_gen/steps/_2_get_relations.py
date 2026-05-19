@@ -167,9 +167,22 @@ def extraction_sig(
     if not is_conversation:
 
         class ExtractTextRelations(dspy.Signature):
-            __doc__ = f"""Extract subject-predicate-object triples from the source text. 
-      Subject and object must be from entities list. Entities provided were previously extracted from the same source text.
-      This is for an extraction task, please be thorough, accurate, and faithful to the reference text. {context}"""
+            __doc__ = f"""从原文中提取主谓宾三元组用于构建知识图谱。
+
+**重要：所有输出必须用简体中文。主语、谓词、宾语全部用中文表达。**
+
+**关键约束：主语和宾语必须严格来自下方提供的实体列表，一字不差。禁止使用实体列表中不存在的任何词作为主语或宾语。**
+
+## 提取指南
+1. 提取原文中明确陈述或清晰暗示的所有关系
+2. 使用具体、描述性强的中文谓词（如"讲述了"、"位于"、"拥有"、"是...的朋友"、"被称为"）
+3. 确保方向正确：(主语 | 谓词 | 宾语) 必须反映真实的关系方向
+4. 尽量让每个实体至少参与一条关系，避免孤立实体
+5. 包括物理位置关系（如"站在"、"聚集在"）
+6. 包括归属/拥有关系（如"拥有"、"持有"、"被夺走了"）
+7. 包括身份/描述关系（如"被称为"、"又名"）
+8. 要彻底：提取实体之间丰富密集的连接
+9. 务必忠实于原文。{context}"""
 
             source_text: str = dspy.InputField()
             entities: list[str] = dspy.InputField()
@@ -256,7 +269,8 @@ def get_relations(
     try:
         extract = dspy.Predict(ExtractRelations)
         result = extract(source_text=input_data, entities=entities)
-        return [(r.subject, r.predicate, r.object) for r in result.relations]
+        return [(r.subject, r.predicate, r.object) for r in result.relations
+                if r.subject in entities and r.object in entities]
 
     except Exception as _:
         # print("get_relations: fallback extraction")

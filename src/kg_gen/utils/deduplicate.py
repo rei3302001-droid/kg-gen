@@ -69,11 +69,11 @@ class DeduplicateList:
         deduplication_result = semhash.self_deduplicate(threshold=self.threshold)
 
         self.deduplicated_items = len(deduplication_result.selected)
-        self.duplicate_items = len(deduplication_result.duplicates)
+        self.duplicate_items = len(deduplication_result.filtered)
         self.reduction = (self.duplicate_items / self.total_items) * 100
 
         # Map back to original strings
-        duplicates = deduplication_result.duplicates
+        duplicates = deduplication_result.filtered
         for duplicate in duplicates:
             original = duplicate.record
             # Check if duplicates list is not empty before accessing
@@ -145,8 +145,15 @@ def run_semhash_deduplication(
     new_edges = [edges_dedup.items_map[item] for item in edges_dedup.deduplicated]
     new_relations = [_get_relation(relation) for relation in graph.relations]
 
-    # Remove duplicate relations
-    new_relations = list(set(tuple(relation) for relation in new_relations))
+    # Remove duplicate relations and filter out any with subjects/objects
+    # not in the final entity set (can happen due to dedup merging)
+    new_entities_set = set(new_entities)
+    new_relations = [
+        tuple(relation)
+        for relation in new_relations
+        if relation[0] in new_entities_set and relation[2] in new_entities_set
+    ]
+    new_relations = list(set(new_relations))
 
     # Update entity_metadata keys to match deduplicated entity names
     new_entity_metadata: dict[str, set[str]] | None = None
